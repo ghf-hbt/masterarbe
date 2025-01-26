@@ -48,6 +48,7 @@ class SegDataset(Dataset):
         
         mask = torch.clamp(mask * 255, 0, self.cfg["n_classes"]-1).long()  # 确保mask值在类别范围内
         return image, mask.squeeze()
+    
 
 # ================== U-Net模型 ==================
 class UNet(nn.Module):
@@ -84,6 +85,10 @@ class UNet(nn.Module):
         self.up2 = nn.Sequential( 
             nn.Upsample(scale_factor=2, mode='bilinear', align_corners=True),
             nn.Conv2d(256, 128, 3, padding=1) 
+        )
+        self.up3 = nn.Sequential( 
+            nn.Upsample(scale_factor=2, mode='bilinear', align_corners=True),
+            nn.Conv2d(128, 64, 3, padding=1) 
         )
         self.up2 = nn.ConvTranspose2d(256, 128, 2, stride=2)
         self.conv2 = conv_block(256, 128)
