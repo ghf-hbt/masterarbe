@@ -24,6 +24,8 @@ CFG = {
         "val": "C:\\Users\\sm1508\\Desktop\\dataset\\val",      
         "test": "C:\\Users\\sm1508\\Desktop\\dataset\\test"     
     },
+    "input_size": (3, 50, 50),  # 明确输入尺寸
+    "rgb_channels": [0, 1, 2],  # 根据实际观察结果设置
     "scheduler": True,        # 添加学习率调度
     "amp": True              # 启用混合精度训练
 }
@@ -75,17 +77,45 @@ class SegDataset(Dataset):
             image = self.transform(image)
             
             torch.manual_seed(seed)
-            mask = mask.unsqueeze(0)  # 增加通道维度
-            mask = self.transform(mask.float())
-            mask = mask.squeeze(0).long()
+            mask = self.transform(mask.float()).long()
 
         return image, mask
 
+    def show_sample(self, idx=0):
+        """显示数据集中的样本"""
+        image, mask = self[idx]
+        
+        plt.figure(figsize=(12, 4))
+        
+        # 显示三个通道
+        plt.subplot(141)
+        plt.imshow(image[0].cpu().numpy(), cmap='gray')
+        plt.title('Channel 1')
+        plt.axis('off')
+        
+        plt.subplot(142)
+        plt.imshow(image[1].cpu().numpy(), cmap='gray')
+        plt.title('Channel 2')
+        plt.axis('off')
+        
+        plt.subplot(143)
+        plt.imshow(image[2].cpu().numpy(), cmap='gray')
+        plt.title('Channel 3')
+        plt.axis('off')
+        
+        # 显示标签
+        plt.subplot(144)
+        plt.imshow(mask.cpu().numpy(), cmap='gray', vmin=0, vmax=CFG["n_classes"]-1)
+        plt.title('Label')
+        plt.axis('off')
+        
+        plt.tight_layout()
+        plt.show()
 
 
 # ================== 标准U-Net模型 ==================
 class UNet(nn.Module):
-    def __init__(self, in_channels, out_channels):
+    def __init__(self, in_channels=CFG["input_channels"], out_channels=CFG["n_classes"]):
         super().__init__()
         
         # 基础卷积块
@@ -197,8 +227,7 @@ def train():
         train_loss = 0.0
         
         for images, masks in train_loader:
-            images = images.to(CFG["device"], non_blocking=True)
-            masks = masks.to(CFG["device"], non_blocking=True)
+            images, masks = images.to(CFG["device"]), masks.to(CFG["device"])
             optimizer.zero_grad()
             
             # 参数device_type
@@ -221,8 +250,7 @@ def train():
         val_loss = 0.0
         with torch.no_grad():
             for images, masks in val_loader:
-                images = images.to(CFG["device"], non_blocking=True)
-                masks = masks.to(CFG["device"], non_blocking=True)
+                images, masks = images.to(CFG["device"]), masks.to(CFG["device"])
                 outputs = model(images)
                 loss = criterion(outputs, masks)
                 val_loss += loss.item()
@@ -293,8 +321,8 @@ def evaluate_testset(model_path="unet_model.pth"):
     
     with torch.no_grad():
         for images, masks in test_loader:
-            images = images.to(CFG["device"], non_blocking=True)
-            masks = masks.to(CFG["device"], non_blocking=True)
+            images = images.to(CFG["device"])
+            masks = masks.to(CFG["device"])
             
             outputs = model(images)
             preds = torch.argmax(outputs, dim=1)
@@ -320,7 +348,7 @@ def evaluate_testset(model_path="unet_model.pth"):
 
 # ================== 辅助函数 ==================
 def calculate_iou(pred, target):
-    """多类别IoU计算"""
+    """支持多类别IoU计算"""
     ious = []
     # 遍历所有类别（包括背景）
     for cls in range(CFG["n_classes"]):
@@ -331,7 +359,7 @@ def calculate_iou(pred, target):
         if union == 0:  # 没有该类别时跳过
             continue
         ious.append(intersection / union)
-    return np.mean(ious) if ious else 1.0  # 无类别时视为完美预测
+    return np.nanmean(ious) if ious else 0.0
 
 def visualize_samples(dataset, model, n_samples=3):
     """可视化预测对比"""
