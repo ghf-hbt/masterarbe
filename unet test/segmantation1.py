@@ -20,9 +20,9 @@ CFG = {
     "epochs": 10,
     "device": "cuda" if torch.cuda.is_available() else "cpu",
     "data_paths": {
-        "train": "C:\\Users\\sm1508\\Desktop\\dataset\\train",  
-        "val": "C:\\Users\\sm1508\\Desktop\\dataset\\val",      
-        "test": "C:\\Users\\sm1508\\Desktop\\dataset\\test"     
+        "train": r"F:\BaiduNetdiskDownload\dataset (2)\dataset\dataset\train",
+        "val": r"F:\BaiduNetdiskDownload\dataset (2)\dataset\dataset\val",
+        "test": r"F:\BaiduNetdiskDownload\dataset (2)\dataset\dataset\test" 
     },
     "scheduler": True,        # 添加学习率调度
     "amp": True              # 启用混合精度训练
